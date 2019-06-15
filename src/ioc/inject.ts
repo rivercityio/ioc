@@ -6,6 +6,7 @@ function define(target: object, property: string, container: Container, type: sy
     Object.defineProperty(target, property, {
         get: function() {
             const value = container.get<any>(type);
+            container.runPlugins(target, property, value, type, args);
             if (args.indexOf(NOCACHE) === -1) {
                 Object.defineProperty(this, property, {
                     value,
@@ -43,6 +44,7 @@ export function createResolve(container: Container) {
         return (): T => {
             if (args.indexOf(NOCACHE) !== -1 || value === undefined) {
                 value = container.get<T>(type);
+                container.runPlugins(null, null, value, type, args);
             }
             return value;
         };

@@ -12,6 +12,8 @@ interface INewAble<T> {
 
 type Registry = Map<symbol, IConfig<any>>;
 
+export type Plugin = (target: object | null, property: string | null, value: any, type: symbol, args: symbol[]) => void;
+
 type Factory<T> = () => T;
 type Value<T> = T;
 
@@ -47,6 +49,7 @@ class Bind<T> {
 export class Container {
     private _registry: Registry = new Map<symbol, IConfig<any>>();
     private _snapshots: Registry[] = [];
+    private _plugins: Plugin[] = [];
 
     bind<T = never>(type: symbol): Bind<T> {
         return new Bind<T>(this._add<T>(type));
@@ -87,6 +90,21 @@ export class Container {
         if (typeof factory !== "undefined") return cacheItem(() => factory());
 
         throw `nothing is bound to ${type.toString()}`;
+    }
+
+    addPlugin(plugin: Plugin): void {
+        if (this._plugins.indexOf(plugin) !== -1) return;
+        this._plugins.push(plugin);
+    }
+
+    removePlugin(plugin: Plugin): void {
+        const idx = this._plugins.indexOf(plugin);
+        if (idx === -1) return;
+        this._plugins.splice(idx, 1);
+    }
+
+    runPlugins(target: object | null, property: string | null, value: any, type: symbol, args: symbol[]): void {
+        this._plugins.forEach(plugin => plugin(target, property, value, type, args));
     }
 
     snapshot(): Container {
