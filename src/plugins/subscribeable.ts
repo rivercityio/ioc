@@ -1,4 +1,4 @@
-import {NOCACHE} from "../ioc/inject";
+import {NOCACHE} from "@owja/ioc";
 
 type Listener = () => void;
 type Unsubscribe = () => void;
@@ -64,7 +64,7 @@ function plugin(target: Subscriber | null, value: Subscribable, args: symbol[], 
     }
 }
 
-export function createSubescribePlugin(subscribeTo: string[], configs: ListenerConfig[]) {
+export function createSubscribePlugin(subscribeTo: string[], configs: ListenerConfig[]) {
     return (target: Subscriber | null, _property: string | null, value: Subscribable, _type: symbol, args: symbol[]) => {
         plugin(target, value, args, subscribeTo, configs)
     }
