@@ -47,6 +47,29 @@ describe("Container", () => {
         expect(container.get<string>(exampleSymbol)).toBe("test");
     });
 
+    test("container as a factory argument", () => {
+        container.bind<string>(exampleSymbol).toFactory((argContainer) => {
+            expect(argContainer).toBe(container);
+            return `hello world`
+        });
+    });
+
+    test("container as a factory argument 2", () => {
+        interface IExampleConstructable {
+            container: Container;
+        }
+        class Example implements IExampleConstructable {
+            container: Container;
+            constructor(argContainer: Container) {
+                this.container = argContainer;
+            }
+        }
+
+        container.bind<IExampleConstructable>(exampleSymbol).toFactory((argContainer) => new Example(argContainer));
+
+        expect(container.get<IExampleConstructable>(exampleSymbol).container).toBe(container);
+    });
+
     test("can bind a constructable", () => {
         interface IExampleConstructable {
             hello(): string;
@@ -84,6 +107,26 @@ describe("Container", () => {
         expect(container.get<IExampleConstructable>(exampleSymbol).hello()).toBe("world 1");
         expect(container.get<IExampleConstructable>(exampleSymbol).hello()).toBe("world 2");
         expect(container.get<IExampleConstructable>(exampleSymbol).hello()).toBe("world 3");
+    });
+
+    test("container as a constructable argument", () => {
+        interface IExampleConstructable {
+            container: Container;
+            hello(): string;
+        }
+
+        container.bind<IExampleConstructable>(exampleSymbol).to(class implements IExampleConstructable {
+            public container: Container;
+            public constructor(argContainer: Container) {
+                this.container = argContainer
+            }
+            hello() {
+                return `hello world`;
+            }
+
+        });
+
+        expect(container.get<IExampleConstructable>(exampleSymbol).container).toBe(container);
     });
 
     test("can bind a constant value", () => {
@@ -171,3 +214,113 @@ describe("Container", () => {
         expect(container.get(exampleSymbol)).toBe("hello world");
     });
 });
+
+describe("Parent container", () => {
+    const parentSymbol = Symbol.for("parent");
+    let parentContainer: Container;
+    let childContainer: Container;
+
+    beforeEach(() => {
+        parentContainer = new Container();
+        childContainer = parentContainer.createChild();
+    });
+
+    test("can create child container", () => {
+        expect(childContainer.getParent()).toBe(parentContainer);
+    });
+
+    test("can remove child container", () => {
+        expect(childContainer.getParent()).toBe(parentContainer);
+        expect(childContainer.removeParent().getParent()).toBe(null);
+    });
+
+    test("can create parent container", () => {
+        const container: Container = new Container();
+        const parentContainerTest = container.createParent();
+        expect(container.getParent()).toBe(parentContainerTest);
+    });
+
+    test("can get binding from parent container. factory", () => {
+        let count = 1;
+        parentContainer.bind<string>(parentSymbol).toFactory(() => {
+            return `Binding from parent container ${count++}`
+        });
+
+        expect(childContainer.get<string>(parentSymbol)).toBe("Binding from parent container 1");
+        expect(childContainer.get<string>(parentSymbol)).toBe("Binding from parent container 2");
+        expect(childContainer.get<string>(parentSymbol)).toBe("Binding from parent container 3");
+    });
+
+    test("can get binding from parent container. factory in singleton scope use cached data", () => {
+        parentContainer.bind<string>(parentSymbol).toFactory(() => {
+            return `Binding from parent container ${Math.floor(Math.random() * Math.floor(1000))}`
+        }).inSingletonScope();
+
+        expect(childContainer.get<string>(parentSymbol)).toBe(childContainer.get<string>(parentSymbol));
+        expect(childContainer.get<string>(parentSymbol)).not.toBe(parentContainer.get<string>(parentSymbol));
+        expect(parentContainer.get<string>(parentSymbol)).toBe(parentContainer.get<string>(parentSymbol));
+    });
+
+    test("can get binding from current container. factory", () => {
+        let count = 1;
+        parentContainer.bind<string>(parentSymbol).toFactory(() => {
+            return `Binding from parent container ${count++}`
+        });
+        childContainer.bind<string>(parentSymbol).toFactory(() => {
+            return `Binding from child container ${count++}`
+        });
+
+        expect(childContainer.get<string>(parentSymbol)).toBe("Binding from child container 1");
+        expect(childContainer.get<string>(parentSymbol)).toBe("Binding from child container 2");
+        expect(parentContainer.get<string>(parentSymbol)).toBe("Binding from parent container 3");
+    })
+
+    test("can get binding from parent container. constructable", () => {
+        interface IExampleConstructable {
+            hello(): string;
+        }
+        parentContainer.bind<IExampleConstructable>(parentSymbol).to(
+            class implements IExampleConstructable {
+                count = 1;
+                hello() {
+                    return `Binding from parent container ${this.count++}`;
+                }
+            },
+        );
+
+        expect(childContainer.get<IExampleConstructable>(parentSymbol).hello()).toBe("Binding from parent container 1");
+        expect(childContainer.get<IExampleConstructable>(parentSymbol).hello()).toBe("Binding from parent container 1");
+        expect(childContainer.get<IExampleConstructable>(parentSymbol).hello()).toBe("Binding from parent container 1");
+    });
+
+    test("can get binding from parent container. constructable in singleton scope use cached data", () => {
+        interface IExampleConstructable {
+            hello(): string;
+        }
+        parentContainer
+            .bind<IExampleConstructable>(parentSymbol)
+            .to(
+                class implements IExampleConstructable {
+                    count = 1;
+                    hello() {
+                        return `Binding from parent container ${this.count++}`;
+                    }
+                },
+            )
+            .inSingletonScope();
+
+        expect(childContainer.get<IExampleConstructable>(parentSymbol).hello()).toBe("Binding from parent container 1");
+        expect(childContainer.get<IExampleConstructable>(parentSymbol).hello()).toBe("Binding from parent container 2");
+        expect(childContainer.get<IExampleConstructable>(parentSymbol).hello()).toBe("Binding from parent container 3");
+        expect(parentContainer.get<IExampleConstructable>(parentSymbol).hello()).toBe("Binding from parent container 1");
+        expect(parentContainer.get<IExampleConstructable>(parentSymbol).hello()).toBe("Binding from parent container 2");
+        expect(childContainer.get<IExampleConstructable>(parentSymbol).hello()).toBe("Binding from parent container 4");
+        expect(childContainer.get<IExampleConstructable>(parentSymbol).hello()).toBe("Binding from parent container 5");
+    });
+
+    test("can get binding from parent container. constant value", () => {
+        parentContainer.bind<string>(parentSymbol).toValue("Binding from parent container");
+        expect(childContainer.get<string>(parentSymbol)).toBe("Binding from parent container");
+    });
+});
+

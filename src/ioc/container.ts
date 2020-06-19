@@ -2,17 +2,17 @@ interface IConfig<T> {
     object?: INewAble<T>;
     factory?: Factory<T>;
     value?: Value<T>;
-    cache?: T;
     singleton: boolean;
 }
 
 interface INewAble<T> {
-    new (...args: any[]): T;
+    new (container: Container, ...args: any[]): T;
 }
 
 type Registry = Map<symbol, IConfig<any>>;
+type Cache = Map<symbol, any>;
 
-type Factory<T> = () => T;
+type Factory<T> = (container: Container) => T;
 type Value<T> = T;
 
 class Options<T> {
@@ -47,6 +47,8 @@ class Bind<T> {
 export class Container {
     private _registry: Registry = new Map<symbol, IConfig<any>>();
     private _snapshots: Registry[] = [];
+    private _cache: Cache = new Map<symbol, any>();
+    private _parent: Container | null = null;
 
     bind<T = never>(type: symbol): Bind<T> {
         return new Bind<T>(this._add<T>(type));
@@ -62,29 +64,35 @@ export class Container {
         }
 
         this._registry.delete(type);
+        this._cache.delete(type);
 
         return this;
     }
 
-    get<T = never>(type: symbol): T {
+    get<T = never>(type: symbol, targetContainer = this): T {
         const regItem = this._registry.get(type);
+
+        if ((regItem === undefined) && this._parent !== null) {
+            return this._parent.get(type, this);
+        }
 
         if (regItem === undefined) {
             throw `nothing bound to ${type.toString()}`;
         }
 
-        const {object, factory, value, cache, singleton} = regItem;
+        const {object, factory, value, singleton} = regItem;
 
         const cacheItem = (creator: () => T): T => {
-            if (singleton && typeof cache !== "undefined") return cache;
+
+            if (singleton && typeof targetContainer._cache.get(type) !== "undefined") return targetContainer._cache.get(type);
             if (!singleton) return creator();
-            regItem.cache = creator();
-            return regItem.cache;
+            targetContainer._cache.set(type, creator());
+            return targetContainer._cache.get(type);
         };
 
         if (typeof value !== "undefined") return value;
-        if (typeof object !== "undefined") return cacheItem(() => new object());
-        if (typeof factory !== "undefined") return cacheItem(() => factory());
+        if (typeof object !== "undefined") return cacheItem(() => new object(targetContainer));
+        if (typeof factory !== "undefined") return cacheItem(() => factory(targetContainer));
 
         throw `nothing is bound to ${type.toString()}`;
     }
@@ -108,5 +116,27 @@ export class Container {
         this._registry.set(type, conf);
 
         return conf;
+    }
+
+    public createChild(): Container {
+        const child = new Container();
+        child._parent = this;
+        return child;
+    }
+
+    public createParent(): Container {
+        const parent = new Container();
+        this._parent = parent;
+        return parent;
+    }
+
+    public getParent(): Container | null {
+        return this._parent;
+    }
+
+    public removeParent(): Container {
+        this._parent = null;
+
+        return this;
     }
 }
