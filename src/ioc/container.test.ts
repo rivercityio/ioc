@@ -273,7 +273,7 @@ describe("Parent container", () => {
         expect(childContainer.get<string>(parentSymbol)).toBe("Binding from child container 1");
         expect(childContainer.get<string>(parentSymbol)).toBe("Binding from child container 2");
         expect(parentContainer.get<string>(parentSymbol)).toBe("Binding from parent container 3");
-    })
+    });
 
     test("can get binding from parent container. constructable", () => {
         interface IExampleConstructable {

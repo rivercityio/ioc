@@ -73,7 +73,7 @@ export class Container {
         const regItem = this._registry.get(type);
 
         if ((regItem === undefined) && this._parent !== null) {
-            return this._parent.get(type, this);
+            return this._parent.get(type, targetContainer);
         }
 
         if (regItem === undefined) {
