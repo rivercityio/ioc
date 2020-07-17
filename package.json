@@ -4,6 +4,7 @@
   "description": "dependency injection for javascript",
   "main": "dist/ioc.js",
   "module": "dist/ioc.module.js",
+  "umd:main": "dist/ioc.umd.js",
   "source": "src/index.ts",
   "types": "dist/index.d.ts",
   "keywords": [
@@ -15,13 +16,14 @@
     "di"
   ],
   "scripts": {
-    "build": "(rm -r dist/* || true) && microbundle --format es,cjs",
+    "build": "(rm -r dist/* || true) && microbundle --format umd",
     "test": "jest",
     "lint": "eslint --ext .ts ./src",
     "lint:fix": "eslint --ext .ts ./src --fix",
     "prettier": "prettier src/**/*.ts --check",
     "prettier:fix": "prettier src/**/*.ts --write",
-    "release": "npm run build && npm run lint && npm run test && npm run prettier && npm login && npm publish --access public"
+    "release": "npm run build && npm run lint && npm run test && npm run prettier && npm login && npm publish --access public",
+    "postinstall": "npm run build"
   },
   "repository": {
     "type": "git",
@@ -40,11 +42,11 @@
     "eslint": "^6.8.0",
     "eslint-plugin-jest": "^23.8.2",
     "jest": "^26.0.1",
-    "microbundle": "^0.11.0",
+    "microbundle": "^0.12.0",
     "prettier": "1.19.1",
     "ts-jest": "^26.1.0",
     "ts-node": "^8.8.2",
-    "typescript": "^3.8.3"
+    "typescript": "^3.9.6"
   },
   "mangle": {
     "regex": "^_"
