@@ -16,7 +16,7 @@
     "di"
   ],
   "scripts": {
-    "build": "(rm -r dist/* || true) && microbundle --format umd",
+    "build": "if [ -d dist/ ]; then rm -r dist/*; fi && microbundle --format umd",
     "test": "jest",
     "lint": "eslint --ext .ts ./src",
     "lint:fix": "eslint --ext .ts ./src --fix",
